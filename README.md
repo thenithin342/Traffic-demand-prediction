@@ -13,7 +13,7 @@
 
 <br/>
 
-<img src="plots/07_spatial_demand.png" width="600" alt="Spatial Distribution of Traffic Demand">
+<img src="output/plots/07_spatial_demand.png" width="600" alt="Spatial Distribution of Traffic Demand">
 
 *Spatial distribution of predicted traffic demand across geohash locations*
 
@@ -84,7 +84,7 @@ Cities worldwide are increasingly turning to **AI-powered solutions** to tackle 
 ### Model Performance Comparison
 
 <div align="center">
-<img src="plots/10_model_comparison.png" width="500" alt="Model R² Comparison">
+<img src="output/plots/10_model_comparison.png" width="500" alt="Model R² Comparison">
 </div>
 
 | Model | OOF R² | Fold 1 | Fold 2 | Fold 3 | Fold 4 | Fold 5 |
@@ -101,40 +101,40 @@ Cities worldwide are increasingly turning to **AI-powered solutions** to tackle 
 ## 🔬 Exploratory Data Analysis
 
 ### Demand Distribution
-<img src="plots/01_demand_distribution.png" width="700" alt="Demand Distribution">
+<img src="output/plots/01_demand_distribution.png" width="700" alt="Demand Distribution">
 
 *Demand is heavily right-skewed with most values concentrated near zero, indicating sparse high-demand events.*
 
 ### Temporal Patterns
-<img src="plots/02_demand_by_hour.png" width="700" alt="Demand by Hour">
+<img src="output/plots/02_demand_by_hour.png" width="700" alt="Demand by Hour">
 
 *Clear rush-hour peaks visible at 7–10 AM and 4–7 PM, with lowest demand during late night hours.*
 
 ### Road Type & Weather Impact
 <p>
-<img src="plots/03_demand_by_roadtype.png" width="400" alt="Demand by Road Type">
-<img src="plots/04_demand_by_weather.png" width="400" alt="Demand by Weather">
+<img src="output/plots/03_demand_by_roadtype.png" width="400" alt="Demand by Road Type">
+<img src="output/plots/04_demand_by_weather.png" width="400" alt="Demand by Weather">
 </p>
 
 *Highways show significantly higher demand than residential roads. Sunny weather correlates with higher traffic.*
 
 ### Demand Heatmap: Lanes × Hour
-<img src="plots/06_heatmap_lanes_hour.png" width="700" alt="Heatmap">
+<img src="output/plots/06_heatmap_lanes_hour.png" width="700" alt="Heatmap">
 
 *Multi-lane roads (4-5 lanes) consistently show higher demand, especially during peak hours.*
 
 ### Feature Correlations
-<img src="plots/08_correlation_heatmap.png" width="600" alt="Correlation Heatmap">
+<img src="output/plots/08_correlation_heatmap.png" width="600" alt="Correlation Heatmap">
 
 ### Feature Importance (LightGBM)
-<img src="plots/09_lgb_feature_importance.png" width="500" alt="Feature Importance">
+<img src="output/plots/09_lgb_feature_importance.png" width="500" alt="Feature Importance">
 
 *Target-encoded features (geo_time, geohash mean demand) dominate, followed by spatial coordinates.*
 
 ### Prediction Quality
 <p>
-<img src="plots/11_actual_vs_predicted_dist.png" width="400" alt="Actual vs Predicted">
-<img src="plots/12_foldwise_r2.png" width="400" alt="Fold-wise R²">
+<img src="output/plots/11_actual_vs_predicted_dist.png" width="400" alt="Actual vs Predicted">
+<img src="output/plots/12_foldwise_r2.png" width="400" alt="Fold-wise R²">
 </p>
 
 *Predicted distribution closely matches actual demand. All folds achieve R² > 0.991.*
@@ -169,28 +169,27 @@ Cities worldwide are increasingly turning to **AI-powered solutions** to tackle 
 ```
 Traffic-demand-prediction/
 ├── 📄 README.md                   # This file
-├── 🐍 solution.py                 # Complete Python solution pipeline
+├── 📄 config.py                   # Centralized configuration and constants
+├── 🐍 solution.py                 # Main entry point for the pipeline
 ├── 📓 solution_notebook.ipynb     # Jupyter notebook version
-├── 📊 submission.csv              # Final predictions (41,778 × 2)
-├── 🔍 eda.py                      # Exploratory data analysis script
+├── 🔍 eda.py                      # Standalone EDA script
+├── 📁 src/                        # Modular source code
+│   ├── __init__.py
+│   ├── data_loader.py             # Data loading utilities
+│   ├── geohash_decoder.py         # Geohash to lat/lon decoding
+│   ├── feature_engineering.py     # Base feature engineering
+│   ├── target_encoding.py         # Target encoding and aggregations
+│   ├── models.py                  # Model training functions (LGB, XGB, CatBoost)
+│   ├── ensemble.py                # Ensemble and stacking methods
+│   └── visualizations.py          # Plot generation scripts
 ├── 📁 data/
 │   └── dataset/
 │       ├── train.csv              # Training data (77,299 × 11)
 │       ├── test.csv               # Test data (41,778 × 10)
 │       └── sample_submission.csv  # Submission format reference
-└── 📁 plots/                      # 12 visualization plots
-    ├── 01_demand_distribution.png
-    ├── 02_demand_by_hour.png
-    ├── 03_demand_by_roadtype.png
-    ├── 04_demand_by_weather.png
-    ├── 05_temperature_vs_demand.png
-    ├── 06_heatmap_lanes_hour.png
-    ├── 07_spatial_demand.png
-    ├── 08_correlation_heatmap.png
-    ├── 09_lgb_feature_importance.png
-    ├── 10_model_comparison.png
-    ├── 11_actual_vs_predicted_dist.png
-    └── 12_foldwise_r2.png
+└── 📁 output/                     
+    ├── submission.csv             # Final predictions (41,778 × 2)
+    └── plots/                     # Generated visualizations
 ```
 
 ---
