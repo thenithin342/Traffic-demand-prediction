@@ -10,7 +10,7 @@ Covers:
 import numpy as np
 import pandas as pd
 
-from src.trajectory import build_trajectory_features
+from src.features.trajectory import build_trajectory_features
 
 
 def _make_frames():

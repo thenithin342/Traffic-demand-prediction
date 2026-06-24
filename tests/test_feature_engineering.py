@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src.feature_engineering import engineer_features, FeatureState
+from src.features.feature_engineering import engineer_features, FeatureState
 
 
 def test_engineer_features_shape_and_columns():

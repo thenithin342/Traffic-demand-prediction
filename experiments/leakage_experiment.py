@@ -31,12 +31,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import config
-from src.data_loader import load_datasets
-from src.feature_engineering import engineer_features, FeatureState
-from src.target_encoding import apply_static_target_encodings
-from src.trajectory import build_trajectory_features
-from src.neighbor import apply_static_neighbor_features
-from src.models import _build_fold_cache, train_lightgbm
+from src.data.data_loader import load_datasets
+from src.features.feature_engineering import engineer_features, FeatureState
+from src.features.target_encoding import apply_static_target_encodings
+from src.features.trajectory import build_trajectory_features
+from src.features.neighbor import apply_static_neighbor_features
+from src.models.models import _build_fold_cache, train_lightgbm
 
 warnings.filterwarnings("ignore")
 

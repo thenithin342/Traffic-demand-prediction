@@ -5,7 +5,7 @@ Calls the underlying _slsqp_oof_preds / _ridge_oof_preds / _stack_xgb directly
 """
 import numpy as np
 
-from src.ensemble import (
+from src.models.ensemble import (
     _slsqp_oof_preds,
     _ridge_oof_preds,
     _stack_xgb,
@@ -57,7 +57,7 @@ def test_xgb_stacker_r2_within_sanity_bound():
     y, oofs, test = _make_synthetic_oofs()
     individual_r2 = [1 - np.var(y - oofs[:, i]) / np.var(y) for i in range(oofs.shape[1])]
     best_single = max(individual_r2)
-    _, _, stacker_r2 = _stack_xgb(oofs, y, test)
+    _, _, stacker_r2, _ = _stack_xgb(oofs, y, test)
     # Sanity bound: stacker shouldn't be 0.15 worse than best single model.
     assert stacker_r2 >= best_single - 0.15, (
         f"XGB stacker R2={stacker_r2:.4f} vs best single R2={best_single:.4f}"
@@ -67,7 +67,7 @@ def test_xgb_stacker_r2_within_sanity_bound():
 def test_build_ensemble_returns_valid_method_and_weights():
     y, oofs, test = _make_synthetic_oofs()
     names = ["m1", "m2", "m3", "m4"]
-    _, _, _, method, coefs = build_ensemble(y, [oofs[:, i] for i in range(4)], [test[:, i] for i in range(4)], names)
+    _, _, _, method, coefs, _ = build_ensemble(y, [oofs[:, i] for i in range(4)], [test[:, i] for i in range(4)], names)
     assert method in ("SLSQP", "Ridge+", "XGBStack", "EqualMean"), f"unexpected method {method}"
     # Final coefs shape matches n_models.
     assert coefs.shape == (4,)

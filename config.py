@@ -20,15 +20,13 @@ N_FOLDS = 5
 TARGET_SMOOTHING = 10.0
 
 # CV_MODE:
-#   "kfold"            — random KFold. Production behaviour pre-phase-2.
+#   "kfold"            — random KFold, 5 folds (uses N_FOLDS above). Larger
+#                        train sets per fold, but trajectory lag features
+#                        leak across folds and inflate OOF R^2.
 #   "groupkfold_day"   — sklearn GroupKFold grouped on the `day` column.
-#                        Phase-2 default: forces the model to extrapolate
-#                        across days, surfacing any cross-fold contamination
-#                        in the trajectory lag features. Yields an honest
-#                        temporal OOF score at the cost of fewer folds (one
-#                        per unique day). Set to "kfold" only when comparing
-#                        against the pre-phase-2 baseline.
-CV_MODE = "groupkfold_day"   # was "kfold"; 2-fold GroupKFold for honest temporal eval
+#                        Forces cross-day extrapolation, leak-safe OOF at
+#                        the cost of 2 folds. Use for honest temporal eval.
+CV_MODE = "kfold"   # 5-fold random KFold; more train data per fold, better R^2 estimates
 
 # FOLD_AWARE_TRAJECTORY:
 #   True  — rebuild trajectory (lag/rolling) grid per CV fold inside

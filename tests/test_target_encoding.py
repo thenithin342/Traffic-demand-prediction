@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from src.target_encoding import apply_static_target_encodings, compute_target_dependent_encodings
+from src.features.target_encoding import apply_static_target_encodings, compute_target_dependent_encodings
 
 
 def test_static_target_encodings():

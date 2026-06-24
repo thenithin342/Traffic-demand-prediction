@@ -29,7 +29,7 @@
 
 ## Project Overview
 
-This repository contains a full end-to-end machine learning pipeline for traffic demand forecasting. The pipeline goes from raw CSV data to a competition-ready `submission.csv` in a single `python solution.py` invocation.
+This repository contains a full end-to-end machine learning pipeline for traffic demand forecasting. The pipeline goes from raw CSV data to a deployed premium web application.
 
 The codebase was built with a focus on **evaluation integrity**: all target encodings, trajectory (lag/rolling) features, and neighbour statistics are computed inside the CV fold loop so that no future information leaks into the validation set.
 
@@ -271,8 +271,8 @@ A systematic audit identified and fixed **6 categories of data leakage** that in
 | **C3** | `target_encoding.py` | Smooth target encoding used full-fold mean on train rows | Replaced with inner-KFold OOF encoding (`_oof_target_encode`) |
 | **C4** | `neighbor.py` | k-NN graph included the self-row | Skip index `0` in argsort; set `k = min(6, n-1)` |
 | **C5** | `models.py` | Target encodings computed globally, not fold-aware | Moved into `_build_fold_cache`, computed per fold |
-| **C6** | `solution.py` | Optuna tuned on full train including val folds | Isolated to inner 80% split via `StratifiedShuffleSplit` |
-| **C12** | `solution.py` | Mock-build run to infer feature columns leaked `demand` into train encodings | Removed mock-build; feature columns inferred from config constants |
+| **C6** | `scripts/train.py` | Optuna tuned on full train including val folds | Isolated to inner 80% split via `StratifiedShuffleSplit` |
+| **C12** | `scripts/train.py` | Mock-build run to infer feature columns leaked `demand` into train encodings | Removed mock-build; feature columns inferred from config constants |
 
 ---
 

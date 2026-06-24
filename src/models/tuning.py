@@ -12,7 +12,7 @@ import lightgbm as lgb
 from sklearn.metrics import r2_score
 
 from config import SEED
-from src.models import _build_fold_cache
+from src.models.models import _build_fold_cache
 
 def objective(trial: optuna.Trial, train: pd.DataFrame, fold_cache: dict[int, dict]) -> float:
     """Optuna objective function for LightGBM.

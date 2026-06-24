@@ -17,6 +17,25 @@ catboost_info/
 # Zip archive (already extracted)
 *.zip
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# IDE
+.qodo/
+.vscode/
+.idea/
+
+# CatBoost temp
+catboost_info/
+
+# Zip archive (already extracted)
+*.zip
+
 # Helper scripts
 create_notebook.py
 
@@ -26,3 +45,6 @@ implementation_plan.md
 # Local cache
 .pytest_cache/
 *.log
+
+# Ignore heavy generated models
+output/models/  

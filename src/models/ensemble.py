@@ -119,8 +119,13 @@ def _ridge_oof_preds(
 
 def _stack_xgb(
     oof_stack: np.ndarray, y: np.ndarray, test_stack: np.ndarray
-) -> tuple[np.ndarray, np.ndarray, float]:
+) -> tuple[np.ndarray, np.ndarray, float, list]:
     """Train an XGB stacker with internal CV on the meta-features.
+
+    Re-implements ``_oof_stack_predict``'s inner loop locally so the fitted
+    per-fold boosters can be returned alongside the OOF/test predictions.
+    The web-app inference path needs the trained boosters to score new
+    data with the same XGB stack that beat the linear/equal-mean baselines.
 
     Note: ``_oof_stack_predict`` doesn't expose the inner val split, so this
     stacker passes the *training* fold as its eval_set. With
@@ -128,16 +133,33 @@ def _stack_xgb(
     an eval_set; using the training fold disables early stopping (train loss
     never rises) but keeps the helper signature clean. Meta features are
     only 5 columns, so this is the right trade-off.
+
+    Returns
+    -------
+    tuple
+        ``(meta_oof, meta_test, r2, stacker_models)`` where
+        ``stacker_models`` is a length-5 list of fitted
+        ``xgb.XGBRegressor`` instances.
     """
     n_models = oof_stack.shape[1]
+    stacker_models: list = []
 
     def _fit(X_tr, y_tr):
         model = xgb.XGBRegressor(**STACKER_PARAMS)
         model.fit(X_tr, y_tr, eval_set=[(X_tr, y_tr)], verbose=False)
         return model, np.zeros(n_models)
 
-    meta_oof, meta_test, r2, _ = _oof_stack_predict(_fit, oof_stack, y, test_stack)
-    return meta_oof, meta_test, r2
+    kf = KFold(n_splits=5, shuffle=True, random_state=SEED)
+    meta_oof = np.zeros(len(y))
+    meta_test = np.zeros(len(test_stack))
+
+    for tr, va in kf.split(oof_stack):
+        model, _ = _fit(oof_stack[tr], y[tr])
+        meta_oof[va] = model.predict(oof_stack[va])
+        meta_test += model.predict(test_stack) / 5
+        stacker_models.append(model)
+
+    return meta_oof, meta_test, r2_score(y, meta_oof), stacker_models
 
 
 def build_ensemble(
@@ -145,13 +167,16 @@ def build_ensemble(
     oof_list: list[np.ndarray],
     test_list: list[np.ndarray],
     names: list[str],
-) -> tuple[np.ndarray, np.ndarray, float, str, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, float, str, np.ndarray, list | None]:
     """Build the best of {weighted blend, Ridge stack, XGB stack, SLSQP tune}.
 
     Returns
     -------
     tuple
-        ``(final_oof, final_predictions, oof_r2, method_name, weights_or_coefs)``
+        ``(final_oof, final_predictions, oof_r2, method_name,
+        weights_or_coefs, stacker_models)``. ``stacker_models`` is the
+        length-5 list of fitted ``xgb.XGBRegressor`` instances when the
+        selected method is ``XGBStack``; ``None`` otherwise.
     """
     oof_stack = np.column_stack(oof_list)
     test_stack = np.column_stack(test_list)
@@ -166,7 +191,9 @@ def build_ensemble(
     print(f"  Ridge OOF R2    = {ridge_r2:.6f}   coefs={dict(zip(names, np.round(coefs, 3)))}")
 
     # --- 3. 2nd-level XGB stacker (proper OOF)
-    xgb_meta_oof, xgb_meta_test, xgb_meta_r2 = _stack_xgb(oof_stack, y, test_stack)
+    xgb_meta_oof, xgb_meta_test, xgb_meta_r2, xgb_stackers = _stack_xgb(
+        oof_stack, y, test_stack
+    )
     print(f"  XGB stacker R2  = {xgb_meta_r2:.6f}")
 
     # --- 4. Simple average
@@ -176,13 +203,14 @@ def build_ensemble(
     print(f"  Equal mean R2   = {avg_r2:.6f}")
 
     candidates = [
-        ("SLSQP",     slsqp_r2, slsqp_oof, slsqp_test, w),
-        ("Ridge+",    ridge_r2, ridge_oof, ridge_test, coefs),
-        ("XGBStack",  xgb_meta_r2, xgb_meta_oof, xgb_meta_test, np.ones(n_models) / n_models),
-        ("EqualMean", avg_r2, avg_oof, avg_test, np.ones(n_models) / n_models)
+        ("SLSQP",     slsqp_r2, slsqp_oof, slsqp_test, w, None),
+        ("Ridge+",    ridge_r2, ridge_oof, ridge_test, coefs, None),
+        ("XGBStack",  xgb_meta_r2, xgb_meta_oof, xgb_meta_test,
+                      np.ones(n_models) / n_models, xgb_stackers),
+        ("EqualMean", avg_r2, avg_oof, avg_test, np.ones(n_models) / n_models, None),
     ]
     candidates.sort(key=lambda c: c[1], reverse=True)
-    name, r2, oof_preds, test_preds, final_w = candidates[0]
+    name, r2, oof_preds, test_preds, final_w, stacker_models = candidates[0]
     print(f"  -> Selected: {name}  (OOF R2 {r2:.6f})")
-    
-    return oof_preds, test_preds, r2, name, final_w
+
+    return oof_preds, test_preds, r2, name, final_w, stacker_models

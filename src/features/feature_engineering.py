@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from src.geohash_decoder import decode_geohash
+from src.data.geohash_decoder import decode_geohash
 
 
 @dataclass
@@ -133,6 +133,13 @@ def apply_feature_state(df: pd.DataFrame, state: FeatureState) -> pd.DataFrame:
     df["temp_x_night"] = df["Temperature"] * df["is_night"]
     df["lanes_x_road"] = df["NumberofLanes"] * df["RoadType_encoded"]
     df["lanes_x_weather"] = df["NumberofLanes"] * df["Weather_encoded"]
+
+    # Speed limit proxy from road type
+    speed_map = {"Residential": 30, "Street": 50, "Highway": 120, "Unknown": 50}
+    df["speed_limit_proxy"] = df["RoadType"].map(speed_map).fillna(50).astype(int)
+
+    # Hour x Road type interaction
+    df["hour_x_road"] = df["hour"] * df["RoadType_encoded"]
 
     # NOTE: `prefix4_density` is computed in the target-encoding stage using
     # the combined train+test frame, so it is consistent for both splits.

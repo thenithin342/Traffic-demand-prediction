@@ -21,9 +21,9 @@ from config import (
     CAT_FEATURES, get_drop_cols,
 )
 import config  # full module reference so CV_MODE lookups are live
-from src.target_encoding import compute_target_dependent_encodings
-from src.neighbor import compute_target_dependent_neighbor_features
-from src.trajectory import build_trajectory_features_fold_aware as _traj_fold_aware
+from src.features.target_encoding import compute_target_dependent_encodings
+from src.features.neighbor import compute_target_dependent_neighbor_features
+from src.features.trajectory import build_trajectory_features_fold_aware as _traj_fold_aware
 
 
 def _make_cv_splits(n_samples: int, groups: np.ndarray | None = None):

@@ -1,5 +1,5 @@
 import pytest
-from src.geohash_decoder import decode_geohash
+from src.data.geohash_decoder import decode_geohash
 
 
 def test_decode_geohash_inside_cell():

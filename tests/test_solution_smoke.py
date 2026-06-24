@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.data_loader import load_datasets
+from src.data.data_loader import load_datasets
 
 
 @pytest.fixture(scope="module")
