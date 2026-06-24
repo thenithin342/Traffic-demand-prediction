@@ -22,3 +22,7 @@ create_notebook.py
 
 # Implementation plan (internal)
 implementation_plan.md
+
+# Local cache
+.pytest_cache/
+*.log
