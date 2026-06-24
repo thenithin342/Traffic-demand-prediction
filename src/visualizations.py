@@ -9,16 +9,22 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.metrics import r2_score
 
-from config import PLOTS_DIR, N_FOLDS
+from config import PLOTS_DIR
 
 sns.set_theme(style="whitegrid", palette="viridis")
 
 
-def generate_eda_plots(train: pd.DataFrame, y: np.ndarray):
+def _ensure_dir() -> None:
+    os.makedirs(PLOTS_DIR, exist_ok=True)
+
+
+def generate_eda_plots(train: pd.DataFrame, y: np.ndarray) -> None:
     """Generate all Exploratory Data Analysis plots."""
+    _ensure_dir()
     print("  Generating EDA plots...")
-    
+
     # 01 Target distribution
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     axes[0].hist(y, bins=80, color="#2196F3", edgecolor="white", alpha=0.85)
@@ -90,9 +96,7 @@ def generate_eda_plots(train: pd.DataFrame, y: np.ndarray):
     ax.scatter(
         train["Temperature"].iloc[sample_idx],
         train["demand"].iloc[sample_idx],
-        alpha=0.3,
-        s=8,
-        c="#673AB7",
+        alpha=0.3, s=8, c="#673AB7",
     )
     ax.set_title("Temperature vs Demand (sampled)", fontsize=14, fontweight="bold")
     ax.set_xlabel("Temperature")
@@ -108,7 +112,7 @@ def generate_eda_plots(train: pd.DataFrame, y: np.ndarray):
             values="demand", index="NumberofLanes", columns="hour", aggfunc="mean"
         )
         sns.heatmap(pivot, cmap="YlOrRd", annot=False, ax=ax, linewidths=0.3)
-        ax.set_title("Demand Heatmap: NumberofLanes × Hour", fontsize=14, fontweight="bold")
+        ax.set_title("Demand Heatmap: NumberofLanes x Hour", fontsize=14, fontweight="bold")
         plt.tight_layout()
         plt.savefig(os.path.join(PLOTS_DIR, "06_heatmap_lanes_hour.png"), dpi=150)
         plt.close()
@@ -120,12 +124,8 @@ def generate_eda_plots(train: pd.DataFrame, y: np.ndarray):
             {"latitude": "first", "longitude": "first", "demand": "mean"}
         )
         sc = ax.scatter(
-            geo_mean["longitude"],
-            geo_mean["latitude"],
-            c=geo_mean["demand"],
-            cmap="hot_r",
-            s=12,
-            alpha=0.8,
+            geo_mean["longitude"], geo_mean["latitude"],
+            c=geo_mean["demand"], cmap="hot_r", s=12, alpha=0.8,
         )
         plt.colorbar(sc, label="Mean Demand")
         ax.set_title("Spatial Distribution of Mean Demand", fontsize=14, fontweight="bold")
@@ -141,14 +141,17 @@ def generate_eda_plots(train: pd.DataFrame, y: np.ndarray):
         "hour", "time_slot", "NumberofLanes", "Temperature", "latitude", "longitude",
         "LargeVehicles_encoded", "Landmarks_encoded", "RoadType_encoded", "Weather_encoded",
         "is_rush_hour", "is_night", "geohash_target_enc", "geo_time_target_enc",
-        "geo_demand_mean", "geo_demand_std", "timeslot_demand_mean"
+        "geo_demand_mean", "geo_demand_std", "timeslot_demand_mean",
+        "lag_same_day_1", "lag_same_day_4", "rollmean_same_day_8",
+        "lag_prev_day_0", "prev_day_rollmean_8",
+        "warm_mean", "geo_cluster",
     ]
     top_feat_cols = [c for c in top_feat_cols if c in train.columns]
     corr_data = train[top_feat_cols + ["demand"]].corr()
     mask = np.triu(np.ones_like(corr_data, dtype=bool))
     sns.heatmap(
         corr_data, mask=mask, cmap="coolwarm", annot=True, fmt=".2f",
-        ax=ax, linewidths=0.5, vmin=-1, vmax=1, annot_kws={"size": 7}
+        ax=ax, linewidths=0.5, vmin=-1, vmax=1, annot_kws={"size": 7},
     )
     ax.set_title("Feature Correlation Heatmap", fontsize=14, fontweight="bold")
     plt.tight_layout()
@@ -156,18 +159,19 @@ def generate_eda_plots(train: pd.DataFrame, y: np.ndarray):
     plt.close()
 
 
-def plot_feature_importance(features: list, importances: np.ndarray):
-    """Plot LightGBM top feature importances."""
+def plot_feature_importance(features: list, importances: np.ndarray, top_n: int = 30) -> None:
+    """Plot LightGBM top feature importances (mean across folds)."""
+    _ensure_dir()
     fi = pd.DataFrame({"feature": features, "importance": importances}).sort_values(
         "importance", ascending=False
     )
     fig, ax = plt.subplots(figsize=(10, 12))
-    top_n = min(30, len(fi))
-    ax.barh(range(top_n), fi["importance"].values[:top_n], color="#4CAF50")
-    ax.set_yticks(range(top_n))
-    ax.set_yticklabels(fi["feature"].values[:top_n])
+    n = min(top_n, len(fi))
+    ax.barh(range(n), fi["importance"].values[:n], color="#4CAF50")
+    ax.set_yticks(range(n))
+    ax.set_yticklabels(fi["feature"].values[:n])
     ax.invert_yaxis()
-    ax.set_title("LightGBM Feature Importance (Top 30)", fontsize=14, fontweight="bold")
+    ax.set_title(f"LightGBM Feature Importance (Top {n}, mean across folds)", fontsize=14, fontweight="bold")
     ax.set_xlabel("Importance")
     plt.tight_layout()
     plt.savefig(os.path.join(PLOTS_DIR, "09_lgb_feature_importance.png"), dpi=150)
@@ -177,36 +181,33 @@ def plot_feature_importance(features: list, importances: np.ndarray):
 
 def plot_model_comparison(
     y: np.ndarray,
-    lgb_r2: float,
-    xgb_r2: float,
-    cat_r2: float,
+    model_r2: dict,
     final_r2: float,
+    final_oof: np.ndarray,
     final_preds: np.ndarray,
-    lgb_scores: list,
-    xgb_scores: list,
-    cat_scores: list,
-):
-    """Generate model comparison and residual plots."""
+    fold_scores: dict,
+    groups: np.ndarray | None = None,
+) -> None:
+    """Generate model comparison plots, residual plots, and Day 49 OOF score."""
+    _ensure_dir()
     print("  Generating model evaluation plots...")
-    
+
+    names = list(model_r2.keys()) + ["Ensemble"]
+    scores = list(model_r2.values()) + [final_r2]
+    colors = ["#4CAF50", "#2196F3", "#FF9800", "#9C27B0", "#E91E63", "#795548"]
+
     # 10 Model R2 comparison
-    fig, ax = plt.subplots(figsize=(8, 5))
-    models = ["LightGBM", "XGBoost", "CatBoost", "Ensemble"]
-    r2_scores = [lgb_r2, xgb_r2, cat_r2, final_r2]
-    colors_bar = ["#4CAF50", "#2196F3", "#FF9800", "#E91E63"]
-    bars = ax.bar(models, r2_scores, color=colors_bar, edgecolor="white", width=0.5)
-    for bar, score in zip(bars, r2_scores):
+    fig, ax = plt.subplots(figsize=(9, 5))
+    bars = ax.bar(names, scores, color=colors[:len(names)], edgecolor="white", width=0.55)
+    for bar, score in zip(bars, scores):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 0.002,
-            f"{score:.4f}",
-            ha="center",
-            va="bottom",
-            fontweight="bold",
+            f"{score:.4f}", ha="center", va="bottom", fontweight="bold",
         )
-    ax.set_title("Model R² Score Comparison (OOF)", fontsize=14, fontweight="bold")
-    ax.set_ylabel("R² Score")
-    ax.set_ylim(min(r2_scores) - 0.05, max(r2_scores) + 0.03)
+    ax.set_title("Model R2 Score Comparison (OOF)", fontsize=14, fontweight="bold")
+    ax.set_ylabel("R2 Score")
+    ax.set_ylim(min(scores) - 0.05, max(scores) + 0.03)
     plt.tight_layout()
     plt.savefig(os.path.join(PLOTS_DIR, "10_model_comparison.png"), dpi=150)
     plt.close()
@@ -225,16 +226,49 @@ def plot_model_comparison(
 
     # 12 Foldwise R2
     fig, ax = plt.subplots(figsize=(10, 5))
-    x_pos = np.arange(N_FOLDS)
-    width = 0.25
-    ax.bar(x_pos - width, lgb_scores, width, label="LightGBM", color="#4CAF50", alpha=0.85)
-    ax.bar(x_pos, xgb_scores, width, label="XGBoost", color="#2196F3", alpha=0.85)
-    ax.bar(x_pos + width, cat_scores, width, label="CatBoost", color="#FF9800", alpha=0.85)
+    n_folds = max(len(v) for v in fold_scores.values())
+    x_pos = np.arange(n_folds)
+    width = 0.8 / max(len(fold_scores), 1)
+    palette = ["#4CAF50", "#2196F3", "#FF9800", "#9C27B0"]
+    for i, (name, sc_list) in enumerate(fold_scores.items()):
+        ax.bar(x_pos + (i - len(fold_scores) / 2) * width + width / 2,
+               sc_list, width, label=name, color=palette[i % len(palette)], alpha=0.85)
     ax.set_xticks(x_pos)
-    ax.set_xticklabels([f"Fold {i+1}" for i in range(N_FOLDS)])
-    ax.set_title("Fold-wise R² Scores", fontsize=14, fontweight="bold")
-    ax.set_ylabel("R² Score")
+    ax.set_xticklabels([f"Fold {i+1}" for i in range(n_folds)])
+    ax.set_title("Fold-wise R2 Scores", fontsize=14, fontweight="bold")
+    ax.set_ylabel("R2 Score")
     ax.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(PLOTS_DIR, "12_foldwise_r2.png"), dpi=150)
+    plt.close()
+
+    # 13 Day-49-only R2 (the realistic test mirror)
+    if groups is not None:
+        day49_mask = (groups == 49)
+        if day49_mask.any():
+            day49_r2 = r2_score(y[day49_mask], final_oof[day49_mask])
+            print(f"  Day-49-only OOF R2 = {day49_r2:.6f}")
+            
+            fig, ax = plt.subplots(figsize=(7, 5))
+            ax.bar(["Overall OOF R2", "Day-49 OOF R2"], [final_r2, day49_r2], color=["#2196F3", "#E91E63"], width=0.4)
+            ax.set_title("Overall vs Day-49 OOF R2 Score", fontsize=14, fontweight="bold")
+            ax.set_ylabel("R2 Score")
+            for i, val in enumerate([final_r2, day49_r2]):
+                ax.text(i, val + 0.005, f"{val:.5f}", ha="center", va="bottom", fontweight="bold")
+            plt.tight_layout()
+            plt.savefig(os.path.join(PLOTS_DIR, "13_day49_r2.png"), dpi=150)
+            plt.close()
+
+    # 14 Residuals vs Predicted
+    residuals = y - final_oof
+    fig, ax = plt.subplots(figsize=(8, 5))
+    rng = np.random.default_rng(42)
+    sample_idx = rng.choice(len(final_oof), min(5000, len(final_oof)), replace=False)
+    ax.scatter(final_oof[sample_idx], residuals[sample_idx], alpha=0.3, s=8, c="#E91E63")
+    ax.axhline(0, color="black", linestyle="--", linewidth=1)
+    ax.set_title("Residuals vs Predicted Demand (OOF)", fontsize=14, fontweight="bold")
+    ax.set_xlabel("Predicted Demand")
+    ax.set_ylabel("Residual (Actual - Predicted)")
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOTS_DIR, "14_residuals.png"), dpi=150)
     plt.close()
