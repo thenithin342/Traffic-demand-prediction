@@ -2,9 +2,12 @@
 
 > **Competition task:** Predict normalised traffic demand (`0–1`) at geohash-encoded road segments for Day 49, given historical observations from Days 1–48.
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
+[![Live Demo](https://img.shields.io/badge/🚦%20Live%20Demo-traffic--demand--prediction.onrender.com-6366f1?style=for-the-badge)](https://traffic-demand-prediction.onrender.com)
+
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python)](https://python.org)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.7-orange?logo=scikitlearn)](https://scikit-learn.org)
 [![LightGBM](https://img.shields.io/badge/LightGBM-4.6-green)](https://lightgbm.readthedocs.io)
+[![Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render)](https://traffic-demand-prediction.onrender.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 ---
@@ -29,9 +32,11 @@
 
 ## Project Overview
 
-This repository contains a full end-to-end machine learning pipeline for traffic demand forecasting. The pipeline goes from raw CSV data to a deployed premium web application.
+This repository contains a full end-to-end machine learning pipeline for traffic demand forecasting — from raw CSV data all the way to a **deployed, production-grade web application**.
 
-The codebase was built with a focus on **evaluation integrity**: all target encodings, trajectory (lag/rolling) features, and neighbour statistics are computed inside the CV fold loop so that no future information leaks into the validation set.
+🚦 **Live Web App:** [https://traffic-demand-prediction.onrender.com](https://traffic-demand-prediction.onrender.com)
+
+The app serves real-time predictions via a premium "Command Center" dashboard powered by a **XGBoost Stacking Ensemble (R² = 0.96)** trained on 101 engineered features. The codebase was built with a focus on **evaluation integrity**: all target encodings, trajectory (lag/rolling) features, and neighbour statistics are computed inside the CV fold loop so that no future information leaks into the validation set.
 
 ---
 
